@@ -1,88 +1,166 @@
-import { useEffect, useState } from 'react';
+'use client';
+import React, { useImperativeHandle, useEffect, useRef } from 'react';
+import useYoutubePlayer from '../hooks/useYoutubePlayer'; // Changed import syntax
 
-const useYouTubePlayer = () => {
-  const [player, setPlayer] = useState(null);
-  const [isReady, setIsReady] = useState(false);
+interface VideoPlayerProps {
+  videoId: string;
+  onTimeUpdate?: (time: number) => void;
+  onPlay?: () => void;
+  onPause?: () => void;
+  onEnd?: () => void;
+  startSeconds?: number;
+  allowSeekAhead?: boolean;
+  showControls?: boolean;
+  showOverlays?: boolean;
+}
 
-  useEffect(() => {
-    // Load YouTube IFrame API
-    const tag = document.createElement('script');
-    tag.src = 'https://www.youtube.com/iframe_api';
-    const firstScriptTag = document.getElementsByTagName('script')[0];
-    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+export interface VideoPlayerHandle {
+  playVideo: () => void;
+  pauseVideo: () => void;
+  seekTo: (seconds: number, allowSeekAhead?: boolean) => void;
+  getCurrentTime: () => number;
+  getDuration: () => number;
+  setPlaybackRate: (rate: number) => void;
+}
 
-    window.onYouTubeIframeAPIReady = () => {
-      setIsReady(true);
-    };
-
-    return () => {
-      if (player) {
-        player.destroy();
-      }
-    };
-  }, []);
-
-  const loadVideo = (url) => {
-    if (!isReady) return;
-
-    let videoId = '';
-    if (url.includes('youtube.com/watch?v=')) {
-      videoId = url.split('v=')[1].split('&')[0];
-    } else if (url.includes('youtu.be/')) {
-      videoId = url.split('youtu.be/')[1].split('?')[0];
-    }
-
-    if (!videoId) {
-      alert('Please enter a valid YouTube URL');
-      return;
-    }
-
-    const newPlayer = new window.YT.Player('player', {
+const VideoPlayer = React.forwardRef<VideoPlayerHandle, VideoPlayerProps>(
+  (
+    {
+      videoId,
+      onTimeUpdate,
+      onPlay,
+      onPause,
+      onEnd,
+      startSeconds = 0,
+      allowSeekAhead = true,
+      showControls = true,
+      showOverlays = true,
+    },
+    ref
+  ) => {
+    const { player } = useYoutubePlayer({
       videoId,
       playerVars: {
-        autoplay: 0,
-        controls: 1,
-        enablejsapi: 1,
-        modestbranding: 1
+        start: startSeconds,
+        controls: showControls ? 1 : 0,
+        modestbranding: 1,
       },
-      events: {
-        onReady: () => setPlayer(newPlayer),
-        onStateChange: (event) => {
-          if (event.data === window.YT.PlayerState.PLAYING) {
-            // Handle play event
-          } else if (event.data === window.YT.PlayerState.PAUSED) {
-            // Handle pause event
-          }
+      onStateChange: (event: YT.OnStateChangeEvent) => { // Added type annotation
+        switch (event.data) {
+          case YT.PlayerState.PLAYING:
+            onPlay?.();
+            break;
+          case YT.PlayerState.PAUSED:
+            onPause?.();
+            break;
+          case YT.PlayerState.ENDED:
+            onEnd?.();
+            break;
         }
-      }
+      },
     });
-  };
 
-  const playVideo = () => {
-    if (player) player.playVideo();
-  };
+    const timeUpdateInterval = useRef<NodeJS.Timeout>();
 
-  const pauseVideo = () => {
-    if (player) player.pauseVideo();
-  };
+    useImperativeHandle(ref, () => ({
+      playVideo: () => player?.playVideo(),
+      pauseVideo: () => player?.pauseVideo(),
+      seekTo: (seconds: number, seekAhead = allowSeekAhead) => 
+        player?.seekTo(seconds, seekAhead),
+      getCurrentTime: () => player?.getCurrentTime() || 0,
+      getDuration: () => player?.getDuration() || 0,
+      setPlaybackRate: (rate: number) => player?.setPlaybackRate(rate),
+    }), [player, allowSeekAhead]);
 
-  const seekTo = (seconds) => {
-    if (player) player.seekTo(seconds, true);
-  };
+    // Handle time updates
+    useEffect(() => {
+      if (!player || !onTimeUpdate) return;
 
-  const setPlaybackRate = (rate) => {
-    if (player) player.setPlaybackRate(rate);
-  };
+      timeUpdateInterval.current = setInterval(() => {
+        try {
+          const currentTime = player.getCurrentTime();
+          onTimeUpdate(currentTime);
+        } catch (error) {
+          console.error('Error getting current time:', error);
+        }
+      }, 100);
 
-  return {
-    player,
-    loadVideo,
-    playVideo,
-    pauseVideo,
-    seekTo,
-    setPlaybackRate,
-    isReady
-  };
-};
+      return () => {
+        if (timeUpdateInterval.current) {
+          clearInterval(timeUpdateInterval.current);
+        }
+      };
+    }, [player, onTimeUpdate]);
 
-export default useYouTubePlayer;
+    return (
+      <div className="video-container">
+        <div className="video-wrapper">
+          <div id="yt-player" className="w-full h-full" />
+          
+          {showOverlays && (
+            <div className="video-overlay">
+              {/* Your overlay elements here */}
+              <div className="metronome-overlay">
+                <div className="metronome-beat">-</div>
+                <span>Metronome: -- BPM</span>
+              </div>
+              
+              <div className="cue-overlay" style={{ display: 'none' }}>
+                <div className="cue-overlay-title">No active cue</div>
+                <div className="cue-overlay-time">--:--</div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {showControls && (
+          <div className="video-controls">
+            <button 
+              className="btn-secondary" 
+              onClick={() => player?.playVideo()}
+            >
+              ▶ Play
+            </button>
+            <button 
+              className="btn-secondary" 
+              onClick={() => player?.pauseVideo()}
+            >
+              ⏸ Pause
+            </button>
+            <button 
+              className="btn-secondary" 
+              onClick={() => {
+                const currentTime = player?.getCurrentTime() || 0;
+                player?.seekTo(Math.max(0, currentTime - 10), true);
+              }}
+            >
+              ⏪ 10s
+            </button>
+            <button 
+              className="btn-secondary" 
+              onClick={() => {
+                const currentTime = player?.getCurrentTime() || 0;
+                player?.seekTo(currentTime + 10, true);
+              }}
+            >
+              ⏩ 10s
+            </button>
+            <select 
+              defaultValue="1"
+              onChange={(e) => player?.setPlaybackRate(parseFloat(e.target.value))}
+              className="playback-rate-select"
+            >
+              <option value="0.5">0.5x</option>
+              <option value="1">1x</option>
+              <option value="1.5">1.5x</option>
+              <option value="2">2x</option>
+            </select>
+          </div>
+        )}
+      </div>
+    );
+  }
+);
+
+VideoPlayer.displayName = 'VideoPlayer';
+export default VideoPlayer;

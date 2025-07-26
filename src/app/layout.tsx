@@ -1,5 +1,6 @@
 // app/layout.tsx
 import './globals.css';
+import React, { useState, useRef, useEffect } from 'react';
 
 export const metadata = {
   title: 'YouTube Dance Video Analyzer',

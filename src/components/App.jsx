@@ -3,7 +3,7 @@ import VideoPlayer from './VideoPlayer';
 import Metronome from './Metronome';
 import AddCueForm from './AddCueForm';
 import CueList from './CueList';
-import useYouTubePlayer from '../hooks/useYouTubePlayer';
+import useYouTubePlayer from '../hooks/useYoutubePlayer';
 import useStore from '../stores/store';
 
 const App = () => {
