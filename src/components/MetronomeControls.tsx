@@ -8,7 +8,8 @@ interface MetronomeControlsProps {
   onTapTempo: () => void;
   onStart: () => void;
   onStop: () => void;
-  onAdjustBpm: (amount: number) => void;
+  onAdjustBpm: (amount: number) => void; // Now handles decimals
+  className?: string;
 }
 
 const MetronomeControls: FC<MetronomeControlsProps> = ({
@@ -22,7 +23,7 @@ const MetronomeControls: FC<MetronomeControlsProps> = ({
 }) => {
   return (
     <div className="bg-white rounded-xl shadow p-6 mb-6">
-      <h3 className="text-xl font-semibold mb-4">Metronome (Salsa 8-count)</h3>
+      <h3 className="text-xl font-semibold mb-4">Metronome</h3>
       <div className="flex flex-wrap items-center gap-3 mt-4">
         <button
           onClick={onTapTempo}
@@ -32,17 +33,22 @@ const MetronomeControls: FC<MetronomeControlsProps> = ({
         </button>
         
         <div className="flex items-center gap-1">
+          {/* Now adjusts by -0.1 */}
           <button
-            onClick={() => onAdjustBpm(-1)}
+            onClick={() => onAdjustBpm(-0.1)}
             className="bg-gray-200 hover:bg-gray-300 w-8 h-8 rounded-full flex items-center justify-center font-bold transition"
           >
             -
           </button>
-          <div className="font-bold min-w-[60px] text-center">
-            {bpm ? `${bpm} BPM` : '-- BPM'}
+          
+          {/* Shows 1 decimal place */}
+          <div className="font-bold min-w-[80px] text-center">
+            {bpm ? `${bpm.toFixed(1)} BPM` : '-- BPM'}
           </div>
+          
+          {/* Now adjusts by +0.1 */}
           <button
-            onClick={() => onAdjustBpm(1)}
+            onClick={() => onAdjustBpm(0.1)}
             className="bg-gray-200 hover:bg-gray-300 w-8 h-8 rounded-full flex items-center justify-center font-bold transition"
           >
             +

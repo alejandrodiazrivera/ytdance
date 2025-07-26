@@ -1,5 +1,4 @@
 'use client';
-
 import { useState, useEffect, useRef } from 'react';
 import { CuePoint } from '../types/types';
 import { useMetronome } from '../hooks/useMetronome';
@@ -175,76 +174,99 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="container mx-auto px-4 py-6 min-h-screen">
-      <header className="mb-8">
-        <h1 className="text-3xl font-bold">YouTube Dancevideo Analyzer</h1>
+    <div className="container mx-auto px-4 py-6 min-h-screen max-w-4xl">
+      {/* Header */}
+      <header className="mb-6">
+        <h1 className="text-2xl md:text-3xl font-bold">YouTube Dance Video Analyser</h1>
       </header>
 
-      <div className="flex gap-2 mb-6">
+      {/* URL Input */}
+      <div className="flex flex-col md:flex-row gap-2 mb-4">
         <input
           type="text"
           value={videoUrl}
           onChange={(e) => setVideoUrl(e.target.value)}
-          placeholder="Paste YouTube URL here..."
-          className="flex-1 p-3 border border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition"
+          placeholder="Paste YouTube URL..."
+          className="flex-1 p-3 border rounded-lg focus:ring-2 focus:ring-blue-200"
         />
         <button
           onClick={loadVideo}
-          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-3 rounded-lg transition whitespace-nowrap"
+          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-3 rounded-lg"
         >
           Load Video
         </button>
       </div>
 
-      <VideoPlayer
-        videoId={videoId}
-        currentTime={currentTime}
-        currentBeat={currentBeat}
-        currentCue={currentCue}
-        overlaysVisible={overlaysVisible}
-        isMetronomeRunning={isMetronomeRunning}
-      />
-
-      <VideoControls
-        onPlay={handlePlay}
-        onPause={handlePause}
-        onSkipBack={handleSkipBack}
-        onSkipForward={handleSkipForward}
-        onSpeedChange={handleSpeedChange}
-        onAddCue={handleAddCue}
-        onToggleOverlay={handleToggleOverlay}
-      />
-
-      <MetronomeControls
-        bpm={bpm}
-        currentBeat={currentBeat}
-        isRunning={isMetronomeRunning}
-        onTapTempo={tapTempo}
-        onStart={startMetronome}
-        onStop={stopMetronome}
-        onAdjustBpm={adjustBpm}
-      />
-
-      {editingCue ? (
-        <CueForm
+      {/* Video Player */}
+      <div className="mb-4 aspect-video bg-black rounded-lg overflow-hidden">
+        <VideoPlayer
+          videoId={videoId}
           currentTime={currentTime}
           currentBeat={currentBeat}
+          currentCue={currentCue}
+          overlaysVisible={overlaysVisible}
           isMetronomeRunning={isMetronomeRunning}
-          onSubmit={handleSubmitCue}
-          editingCue={editingCue}
-          onCancel={() => setEditingCue(null)}
         />
-      ) : (
-        <CueForm
-          currentTime={currentTime}
+      </div>
+
+      {/* Combined Controls */}
+      <div className="flex flex-wrap gap-3 mb-6 p-3 bg-gray-50 rounded-lg">
+        <VideoControls
+          onPlay={handlePlay}
+          onPause={handlePause}
+          onSkipBack={handleSkipBack}
+          onSkipForward={handleSkipForward}
+          onSpeedChange={handleSpeedChange}
+          onAddCue={handleAddCue}
+          onToggleOverlay={handleToggleOverlay}
+        />
+        
+        <MetronomeControls
+          bpm={bpm}
           currentBeat={currentBeat}
-          isMetronomeRunning={isMetronomeRunning}
-          onSubmit={handleSubmitCue}
-          editingCue={null}
-          onCancel={() => {}}
+          isRunning={isMetronomeRunning}
+          onTapTempo={tapTempo}
+          onStart={startMetronome}
+          onStop={stopMetronome}
+          onAdjustBpm={adjustBpm}
+          className="ml-auto"
         />
+      </div>
+
+      {/* Current Cue Highlight */}
+      {currentCue && (
+        <div className="mb-4 p-4 bg-blue-50 border-l-4 border-blue-500 rounded-r">
+          <h3 className="font-bold">Current Section:</h3>
+          <p>{currentCue.title} @ {currentCue.time}</p>
+          {currentCue.note && <p className="mt-2 italic">{currentCue.note}</p>}
+        </div>
       )}
 
+      {/* Floating Cue Form */}
+      {editingCue && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg max-w-md w-full mx-4">
+            <CueForm
+              currentTime={currentTime}
+              currentBeat={currentBeat}
+              isMetronomeRunning={isMetronomeRunning}
+              onSubmit={handleSubmitCue}
+              editingCue={editingCue}
+              onCancel={() => setEditingCue(null)}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Mobile Add Button */}
+      <button 
+        onClick={handleAddCue}
+        className="md:hidden fixed bottom-6 right-6 bg-blue-500 text-white p-4 rounded-full shadow-lg z-40"
+      >
+        +
+      </button>
+
+      {/* Cue List */}
       <CueList
         cuePoints={cuePoints}
         currentTime={currentTime}
@@ -253,5 +275,5 @@ export default function Home() {
         onJump={handleJumpToTimestamp}
       />
     </div>
-  );
+  )
 }

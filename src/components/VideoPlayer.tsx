@@ -52,7 +52,7 @@ const VideoPlayer: FC<VideoPlayerProps> = ({
                 ${currentBeat === 1 || currentBeat === 5 ? 'bg-purple-500' : 'bg-red-500'}`}>
                 {currentBeat}
               </div>
-              <span>Metronome: {currentBeat} BPM</span>
+              <span>Beat</span>
             </div>
           )}
           

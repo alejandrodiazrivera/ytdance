@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 
 export const useAudio = () => {
   const audioContextRef = useRef<AudioContext | null>(null);
-  const clickSourcesRef = useRef<AudioBufferSourceNode[]>([]);
+  const clickSourcesRef = useRef<(OscillatorNode | AudioBufferSourceNode)[]>([]);
 
   // Initialize audio context
   useEffect(() => {
