@@ -1,0 +1,7 @@
+.metronome-beat {
+  transition: background-color 0.1s ease;
+}
+
+.metronome-beat.downbeat {
+  background-color: var(--downbeat);
+}
