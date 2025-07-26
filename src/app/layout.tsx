@@ -1,8 +1,8 @@
-import type { Metadata } from 'next';
+// app/layout.tsx
 import './globals.css';
 
-export const metadata: Metadata = {
-  title: 'YouTube Dancevideo Analyzer',
+export const metadata = {
+  title: 'YouTube Dance Video Analyzer',
   description: 'Analyze dance videos with metronome and cue points',
 };
 
@@ -13,7 +13,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="bg-gray-100 text-gray-900">
+      <body className="min-h-screen bg-gray-50">
         <main className="container mx-auto px-4 py-8">
           {children}
         </main>

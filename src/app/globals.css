@@ -1,67 +1,35 @@
+/* app/globals.css */
 @tailwind base;
+@tailwind components;
 @tailwind utilities;
 
-:root {
-  --primary: #3b82f6;
-  --primary-hover: #2563eb;
-  --success: #10b981;
-  --success-hover: #059669;
-  --danger: #ef4444;
-  --danger-hover: #dc2626;
-  --warning: #f59e0b;
-  --warning-hover: #d97706;
-  --bg: #f3f4f6;
-  --card: #ffffff;
-  --text: #111827;
-  --border: #e5e7eb;
-  --downbeat: #8b5cf6;
+/* Custom base styles */
+@layer base {
+  :root {
+    --primary: #3b82f6;
+    --primary-hover: #2563eb;
+    --success: #10b981;
+    --danger: #ef4444;
+    --warning: #f59e0b;
+    --downbeat: #8b5cf6;
+  }
+
+  body {
+    @apply bg-gray-50 text-gray-900;
+  }
 }
 
-body {
-  line-height: 1.6;
-  padding: 1rem;
-  background-color: var(--bg);
-  color: var(--text);
+/* Custom components */
+@layer components {
+  .btn-primary {
+    @apply bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors;
+  }
+  
+  .btn-danger {
+    @apply bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition-colors;
+  }
+  
+  .video-wrapper {
+    @apply relative pb-[56.25%] bg-gray-200 rounded-xl overflow-hidden;
+  }
 }
-
-.container {
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-/* Custom utility classes */
-.video-wrapper {
-  position: relative;
-  padding-bottom: 56.25%;
-  height: 0;
-  margin-bottom: 1rem;
-  background-color: #e5e7eb;
-  border-radius: 0.5rem;
-  overflow: hidden;
-}
-
-.video-placeholder {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  color: #6b7280;
-  z-index: 1;
-}
-
-.beat-badge {
-  display: inline-flex;
-  width: 1.5rem;
-  height: 1.5rem;
-  border-radius: 9999px;
-  background-color: var(--primary);
-  color: white;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.75rem;
-  font-weight: bold;
-  margin-right: 0.5rem;
-}
-
-.beat-badge.downbeat {
-  background-color: var(--downbeat);}
