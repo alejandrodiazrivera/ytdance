@@ -1,105 +1,71 @@
-'use client';
-import React, { useImperativeHandle, useEffect } from 'react';
-import { useYoutubePlayer } from '../hooks/useYoutubePlayer';
+import { FC, useState, useEffect } from 'react';
+import { CuePoint } from '../types/types';
 
 interface VideoPlayerProps {
-  videoId: string;
-  onTimeUpdate?: (time: number) => void;
-  onPlay?: () => void;
-  onPause?: () => void;
-  onEnd?: () => void;
-  startSeconds?: number;
-  allowSeekAhead?: boolean;
+  videoId: string | null;
+  currentTime: number;
+  currentBeat: number;
+  currentCue: CuePoint | null;
+  overlaysVisible: boolean;
+  isMetronomeRunning: boolean;
 }
 
-export interface VideoPlayerHandle {
-  playVideo: () => void;
-  pauseVideo: () => void;
-  seekTo: (seconds: number, allowSeekAhead?: boolean) => void;
-  getCurrentTime: () => number;
-}
+const VideoPlayer: FC<VideoPlayerProps> = ({
+  videoId,
+  currentTime,
+  currentBeat,
+  currentCue,
+  overlaysVisible,
+  isMetronomeRunning
+}) => {
+  const [showPlaceholder, setShowPlaceholder] = useState(true);
 
-const VideoPlayer = React.forwardRef<VideoPlayerHandle, VideoPlayerProps>(
-  (
-    { videoId, onTimeUpdate, onPlay, onPause, onEnd, startSeconds = 0, allowSeekAhead = true },
-    ref
-  ) => {
-    const { player } = useYoutubePlayer({
-      videoId,
-      playerVars: {
-        start: startSeconds,
-        controls: 1,
-        modestbranding: 1,
-      },
-      onStateChange: (event) => {
-        switch (event.data) {
-          case YT.PlayerState.PLAYING:
-            onPlay?.();
-            break;
-          case YT.PlayerState.PAUSED:
-            onPause?.();
-            break;
-          case YT.PlayerState.ENDED:
-            onEnd?.();
-            break;
-        }
-      },
-    });
+  useEffect(() => {
+    setShowPlaceholder(!videoId);
+  }, [videoId]);
 
-    useImperativeHandle(ref, () => ({
-      playVideo: () => {
-        if (!player) {
-          console.warn('Player not ready');
-          return;
-        }
-        player.playVideo();
-      },
-      pauseVideo: () => {
-        if (!player) {
-          console.warn('Player not ready');
-          return;
-        }
-        player.pauseVideo();
-      },
-      seekTo: (seconds: number, seekAhead = allowSeekAhead) => {
-        if (!player) {
-          console.warn('Player not ready');
-          return;
-        }
-        player.seekTo(seconds, seekAhead);
-      },
-      getCurrentTime: () => {
-        if (!player) {
-          console.warn('Player not ready');
-          return 0;
-        }
-        return player.getCurrentTime();
-      },
-    }), [player, allowSeekAhead]);
-
-    // Handle time updates
-    useEffect(() => {
-      if (!player || !onTimeUpdate) return;
-
-      const interval = setInterval(() => {
-        try {
-          const currentTime = player.getCurrentTime();
-          onTimeUpdate(currentTime);
-        } catch (error) {
-          console.error('Error getting current time:', error);
-        }
-      }, 100);
-
-      return () => clearInterval(interval);
-    }, [player, onTimeUpdate]);
-
+  if (showPlaceholder) {
     return (
-      <div className="w-full aspect-video bg-black rounded-lg overflow-hidden">
-        <div id="yt-player" className="w-full h-full" />
+      <div className="relative pb-[56.25%] bg-gray-200 rounded-xl mb-4 overflow-hidden">
+        <div className="absolute inset-0 flex items-center justify-center text-gray-500">
+          Video will appear here
+        </div>
       </div>
     );
   }
-);
 
-VideoPlayer.displayName = 'VideoPlayer';
+  return (
+    <div className="relative pb-[56.25%] bg-gray-200 rounded-xl mb-4 overflow-hidden">
+      <iframe
+        src={`https://www.youtube.com/embed/${videoId}?enablejsapi=1`}
+        className="absolute inset-0 w-full h-full"
+        frameBorder="0"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowFullScreen
+      />
+      
+      {overlaysVisible && (
+        <div className="absolute inset-0 pointer-events-none z-10">
+          {isMetronomeRunning && (
+            <div className="absolute top-3 left-3 bg-black bg-opacity-70 text-white px-4 py-2 rounded-xl text-xl font-bold flex items-center">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-2
+                ${currentBeat === 1 || currentBeat === 5 ? 'bg-purple-500' : 'bg-red-500'}`}>
+                {currentBeat}
+              </div>
+              <span>Metronome: {currentBeat} BPM</span>
+            </div>
+          )}
+          
+          {currentCue && (
+            <div className="absolute bottom-3 left-3 bg-black bg-opacity-70 text-white px-4 py-2 rounded-xl max-w-[300px]">
+              <div className="text-lg font-bold mb-1">{currentCue.title}</div>
+              <div className="text-sm opacity-80">{currentCue.time}</div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 export default VideoPlayer;

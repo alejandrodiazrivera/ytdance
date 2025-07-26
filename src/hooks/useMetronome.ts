@@ -1,88 +1,87 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useAudio } from './useAudio';
 
-declare global {
-  interface Window {
-    webkitAudioContext: typeof AudioContext;
-  }
-}
+export const useMetronome = () => {
+  const [bpm, setBpm] = useState<number | null>(null);
+  const [isRunning, setIsRunning] = useState(false);
+  const [currentBeat, setCurrentBeat] = useState(0);
+  const tapTimesRef = useRef<number[]>([]);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const { playClick } = useAudio();
 
-export const useMetronome = (
-  bpm: number,
-  isActive: boolean,
-  onBeat: (beat: number) => void
-) => {
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const gainNodeRef = useRef<GainNode | null>(null);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const beatRef = useRef(0);
+  const tapTempo = () => {
+    const now = Date.now();
+    tapTimesRef.current = tapTimesRef.current.filter(time => now - time < 2000);
+    tapTimesRef.current.push(now);
+    
+    if (tapTimesRef.current.length > 1) {
+      const averageDiff = (tapTimesRef.current[tapTimesRef.current.length - 1] - tapTimesRef.current[0]) / 
+                         (tapTimesRef.current.length - 1);
+      setBpm(Math.round(60000 / averageDiff));
+    }
+  };
 
-  useEffect(() => {
-    if (!audioContextRef.current) {
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
-      audioContextRef.current = new AudioContext();
-      gainNodeRef.current = audioContextRef.current.createGain();
-      
-      if (gainNodeRef.current) {
-        gainNodeRef.current.gain.value = 0.5;
-        gainNodeRef.current.connect(audioContextRef.current.destination);
+  const start = () => {
+    if (!bpm) return;
+    
+    stop();
+    setCurrentBeat(0);
+    const interval = 60000 / bpm;
+    
+    // Play first beat immediately
+    setCurrentBeat(prev => {
+      const newBeat = (prev % 8) + 1;
+      playClick(newBeat);
+      return newBeat;
+    });
+    
+    // Set interval for subsequent beats
+    intervalRef.current = setInterval(() => {
+      setCurrentBeat(prev => {
+        const newBeat = (prev % 8) + 1;
+        playClick(newBeat);
+        return newBeat;
+      });
+    }, interval);
+    
+    setIsRunning(true);
+  };
+
+  const stop = () => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    setIsRunning(false);
+    setCurrentBeat(0);
+  };
+
+  const adjustBpm = (amount: number) => {
+    if (bpm) {
+      const newBpm = Math.max(1, bpm + amount);
+      setBpm(newBpm);
+      if (isRunning) {
+        start(); // Restart with new BPM
       }
     }
+  };
 
+  useEffect(() => {
     return () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-      }
-      if (audioContextRef.current?.state !== 'closed') {
-        audioContextRef.current?.close();
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
       }
     };
   }, []);
 
-  const playBeat = (beat: number) => {
-    if (!audioContextRef.current || !gainNodeRef.current) return;
-
-    const oscillator = audioContextRef.current.createOscillator();
-    oscillator.type = 'sine';
-    oscillator.frequency.value = beat % 4 === 0 ? 800 : 400;
-    oscillator.connect(gainNodeRef.current);
-    oscillator.start();
-    oscillator.stop(audioContextRef.current.currentTime + 0.05);
+  return {
+    bpm,
+    currentBeat,
+    isRunning,
+    tapTempo,
+    start,
+    stop,
+    adjustBpm,
+    setBpm
   };
-
-  useEffect(() => {
-    if (!isActive) {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-        timerRef.current = null;
-      }
-      return;
-    }
-
-    const interval = (60 / bpm) * 1000;
-    let lastTime = performance.now();
-
-    const scheduleBeat = (time: number) => {
-      const drift = time - lastTime;
-      const nextInterval = interval - drift;
-
-      beatRef.current = (beatRef.current + 1) % 4;
-      onBeat(beatRef.current);
-      playBeat(beatRef.current);
-
-      lastTime = time + nextInterval;
-      timerRef.current = setTimeout(() => scheduleBeat(lastTime), nextInterval);
-    };
-
-    lastTime = performance.now();
-    timerRef.current = setTimeout(() => scheduleBeat(lastTime), interval);
-
-    return () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-        timerRef.current = null;
-      }
-    };
-  }, [bpm, isActive, onBeat]);
-
-  return { beat: beatRef.current };
 };

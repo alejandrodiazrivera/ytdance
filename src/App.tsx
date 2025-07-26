@@ -1,15 +1,13 @@
-'use client';
-
 import { useState, useEffect, useRef } from 'react';
-import { CuePoint } from '../types/types';
-import { useMetronome } from '../hooks/useMetronome';
-import VideoPlayer from '../components/VideoPlayer';
-import VideoControls from '../components/VideoControls';
-import MetronomeControls from '../components/MetronomeControls';
-import CueForm from '../components/CueForm';
-import CueList from '../components/CueList';
+import { CuePoint } from './types/types';
+import { useMetronome } from './hooks/useMetronome';
+import VideoPlayer from './components/VideoPlayer';
+import VideoControls from './components/VideoControls';
+import MetronomeControls from './components/MetronomeControls';
+import CueForm from './components/CueForm';
+import CueList from './components/CueList';
 
-export default function Home() {
+const App = () => {
   const [videoUrl, setVideoUrl] = useState('');
   const [videoId, setVideoId] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
@@ -175,7 +173,7 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="container mx-auto px-4 py-6 min-h-screen">
+    <div className="container mx-auto px-4 py-6 bg-gray-100 min-h-screen">
       <header className="mb-8">
         <h1 className="text-3xl font-bold">YouTube Dancevideo Analyzer</h1>
       </header>
@@ -254,4 +252,6 @@ export default function Home() {
       />
     </div>
   );
-}
+};
+
+export default App;

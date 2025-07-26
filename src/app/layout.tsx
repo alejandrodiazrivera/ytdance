@@ -1,8 +1,10 @@
-// app/layout.tsx
+import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
 import './globals.css';
-import React, { useState, useRef, useEffect } from 'react';
 
-export const metadata = {
+const inter = Inter({ subsets: ['latin'] });
+
+export const metadata: Metadata = {
   title: 'YouTube Dance Video Analyzer',
   description: 'Analyze dance videos with metronome and cue points',
 };
@@ -14,10 +16,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-gray-50">
-        <main className="container mx-auto px-4 py-8">
-          {children}
-        </main>
+      <body className={`${inter.className} bg-gray-100`}>
+        {children}
       </body>
     </html>
   );
