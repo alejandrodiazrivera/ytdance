@@ -240,6 +240,10 @@ const App = () => {
           onSubmit={handleSubmitCue}
           editingCue={editingCue}
           onCancel={() => setEditingCue(null)}
+          onPause={() => {
+            handlePause(); // Pause video playback
+            stopMetronome(); // Stop the metronome
+          }}
         />
       ) : (
         <CueForm
@@ -249,6 +253,10 @@ const App = () => {
           onSubmit={handleSubmitCue}
           editingCue={null}
           onCancel={() => {}}
+          onPause={() => {
+            handlePause(); // Pause video playback
+            stopMetronome(); // Stop the metronome
+          }}
         />
       )}
 

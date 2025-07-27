@@ -8,6 +8,7 @@ interface CueFormProps {
   onSubmit: (cue: Omit<CuePoint, 'id'>) => void;
   editingCue: CuePoint | null;
   onCancel: () => void;
+  onPause: () => void;
 }
 
 const CueForm: FC<CueFormProps> = ({ 
@@ -16,7 +17,8 @@ const CueForm: FC<CueFormProps> = ({
   isMetronomeRunning,
   onSubmit, 
   editingCue,
-  onCancel 
+  onCancel,
+  onPause
 }) => {
   const [time, setTime] = useState('');
   const [title, setTitle] = useState('');
@@ -25,28 +27,22 @@ const CueForm: FC<CueFormProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
+    onPause();
+
     if (editingCue) {
       setTime(editingCue.time);
       setTitle(editingCue.title);
       setNote(editingCue.note);
       setBeat(editingCue.beat);
     } else {
-      setTime('');
+      const minutes = Math.floor(currentTime / 60).toString().padStart(2, '0');
+      const seconds = Math.floor(currentTime % 60).toString().padStart(2, '0');
+      setTime(`${minutes}:${seconds}`);
       setTitle('');
       setNote('');
-      setBeat(undefined);
+      setBeat(isMetronomeRunning ? currentBeat : undefined);
     }
-  }, [editingCue]);
-
-  const handleAddCurrentTime = () => {
-    const minutes = Math.floor(currentTime / 60).toString().padStart(2, '0');
-    const seconds = Math.floor(currentTime % 60).toString().padStart(2, '0');
-    setTime(`${minutes}:${seconds}`);
-    
-    if (isMetronomeRunning) {
-      setBeat(currentBeat);
-    }
-  };
+  }, [editingCue, onPause, currentTime, isMetronomeRunning, currentBeat]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,22 +57,26 @@ const CueForm: FC<CueFormProps> = ({
     try {
       await onSubmit({ time, title, note, beat });
       if (!editingCue) {
-        // Reset form if it's a new cue
-        setTime('');
         setTitle('');
         setNote('');
-        setBeat(undefined);
       }
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const getBeatColor = () => {
+    if (!isMetronomeRunning) return 'bg-gray-200';
+    return currentBeat === 1 || currentBeat === 5 
+      ? currentBeat === 1 ? 'bg-purple-600' : 'bg-red-600' 
+      : 'bg-gray-400';
+  };
+
   return (
-    <div className="bg-white rounded-xl shadow-lg p-6 mb-6 border border-gray-100">
+    <div className="mb-6"> {/* Removed bg-white, rounded-xl, shadow-lg, p-6, and border */}
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-xl font-bold text-gray-800">
-          {editingCue ? '✏️ Edit Cue Point' : '➕ Add New Cue Point'}
+          {editingCue ? 'Edit Cue Point' : '➕ Add New Cue Point'}
         </h3>
         {editingCue && (
           <button
@@ -90,76 +90,47 @@ const CueForm: FC<CueFormProps> = ({
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="md:col-span-2">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={time}
-                onChange={(e) => setTime(e.target.value)}
-                placeholder="MM:SS"
-                className="flex-1 p-3 border border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition"
-                required
-              />
-              <button
-                type="button"
-                onClick={handleAddCurrentTime}
-                className="flex items-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-600 px-4 py-3 rounded-lg transition whitespace-nowrap"
-                title="Use current video time"
-              >
-                <span className="text-sm">⏺ Now</span>
-              </button>
-            </div>
+        {/* Top row - Time/Beat and Title */}
+        <div className="flex gap-4">
+          {/* Time and Beat */}
+          <div className="flex-1 space-y-2">
+            <input
+              type="text"
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
+              placeholder="MM:SS"
+              className="w-full p-3 border border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition"
+              required
+            />
+            {isMetronomeRunning && (
+              <div className={`rounded-full h-10 w-10 mx-auto flex items-center justify-center text-white font-bold ${getBeatColor()}`}>
+                {currentBeat}
+              </div>
+            )}
           </div>
-          
-          <div>
+
+          {/* Title */}
+          <div className="flex-[3]">
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Title (e.g., 'Spin Move')"
+              placeholder="[Title of Cue Point]"
               className="w-full p-3 border border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition"
               required
             />
           </div>
         </div>
 
-        {isMetronomeRunning && (
-          <div className="bg-blue-50 p-4 rounded-lg">
-            <label className="block text-sm font-medium text-blue-800 mb-2">
-              Metronome Beat (Current: {currentBeat})
-            </label>
-            <div className="flex gap-2">
-              {[1, 2, 3, 4, 5, 6, 7, 8].map((num) => (
-                <button
-                  key={num}
-                  type="button"
-                  onClick={() => setBeat(num)}
-                  className={`w-10 h-10 rounded-full flex items-center justify-center transition ${
-                    beat === num 
-                      ? 'bg-blue-600 text-white' 
-                      : 'bg-white border border-blue-200 text-blue-600 hover:bg-blue-100'
-                  }`}
-                >
-                  {num}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* Notes */}
+        <textarea
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="Add detailed notes about this cue point..."
+          className="w-full p-3 border border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition min-h-[120px]"
+        />
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Notes
-          </label>
-          <textarea
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="Add detailed notes about this cue point..."
-            className="w-full p-3 border border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition min-h-[120px]"
-          />
-        </div>
-
+        {/* Buttons */}
         <div className="flex justify-end gap-3 pt-2">
           {editingCue && (
             <button

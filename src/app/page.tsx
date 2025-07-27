@@ -272,6 +272,7 @@ export default function Home() {
               onSubmit={handleSubmitCue}
               editingCue={editingCue}
               onCancel={() => setEditingCue(null)}
+              onPause={handlePause} 
             />
           </div>
         </div>

@@ -79,19 +79,20 @@ const VideoControls: FC<VideoControlsProps> = ({
       </select>
 
       <button
-        onClick={onAddCue}
-        className="p-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg"
-        aria-label="Add Cue Point"
-      >
-        ⏺ Add Cue
-      </button>
+      onClick={onAddCue}
+      className="p-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg 
+                transition-colors duration-200 flex items-center justify-center gap-1.5"
+      aria-label="Add Cue Point"
+    >
+      Add Cue
+    </button>
 
       <button
         onClick={onToggleOverlay}
-        className="p-2 bg-gray-200 hover:bg-gray-300 rounded-lg ml-auto"
+        className="p-2 bg-gray-200 hover:bg-gray-300 rounded-lg ml-auto flex items-center gap-2"
         aria-label="Toggle Overlays"
       >
-        {overlaysVisible ? '⚪ Hide Overlays' : '🟢 Show Overlays'}
+        {overlaysVisible ? 'Hide Overlays ⚪' : 'Show Overlays 🟢'}
       </button>
     </div>
   );
