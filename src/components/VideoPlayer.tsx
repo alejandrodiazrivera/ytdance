@@ -1,5 +1,13 @@
-import { FC, useState, useEffect } from 'react';
+import { useEffect, useRef, useState, useMemo, memo } from 'react';
 import { CuePoint } from '../types/types';
+
+interface YTPlayer {
+  playVideo: () => void;
+  pauseVideo: () => void;
+  seekTo: (seconds: number, allowSeekAhead: boolean) => void;
+  destroy: () => void;
+  getCurrentTime: () => number;
+}
 
 interface VideoPlayerProps {
   videoId: string | null;
@@ -8,64 +16,227 @@ interface VideoPlayerProps {
   currentCue: CuePoint | null;
   overlaysVisible: boolean;
   isMetronomeRunning: boolean;
+  isPlaying: boolean;
+  debug?: boolean;
+  aspectRatio?: number; // New prop for custom aspect ratio (defaults to 16:9)
+  fullHeight?: boolean; // New prop for full viewport height
 }
 
-const VideoPlayer: FC<VideoPlayerProps> = ({
+declare global {
+  interface Window {
+    YT: {
+      Player: new (element: string | HTMLElement, options: any) => YTPlayer;
+      PlayerState: {
+        PLAYING: number;
+        PAUSED: number;
+        ENDED: number;
+      };
+    };
+    onYouTubeIframeAPIReady: (() => void) | null;
+  }
+}
+
+const TimeOverlay = memo(({ currentTime }: { currentTime: number }) => (
+  <div className="absolute top-2 left-2 bg-black/70 text-white p-1 md:p-2 rounded text-xs md:text-base">
+    {new Date(currentTime * 1000).toISOString().substr(11, 8)}
+  </div>
+));
+
+const BeatOverlay = memo(({ currentBeat }: { currentBeat: number }) => (
+  <div className="absolute top-2 right-2 bg-black/70 text-white p-1 md:p-2 rounded text-xs md:text-base">
+    Beat: {currentBeat}
+  </div>
+));
+
+const CueOverlay = memo(({ cue }: { cue: CuePoint }) => (
+  <div className="absolute bottom-4 left-0 right-0 mx-auto bg-black/70 text-white p-2 md:p-4 rounded max-w-[90%] md:max-w-md text-center">
+    <h3 className="font-bold text-sm md:text-lg">{cue.title}</h3>
+    <p className="text-xs md:text-base">{cue.time}</p>
+    {cue.note && <p className="mt-1 md:mt-2 italic text-xs md:text-sm">{cue.note}</p>}
+  </div>
+));
+
+export default function VideoPlayer({
   videoId,
   currentTime,
   currentBeat,
   currentCue,
   overlaysVisible,
-  isMetronomeRunning
-}) => {
-  const [showPlaceholder, setShowPlaceholder] = useState(true);
+  isMetronomeRunning,
+  isPlaying,
+  debug = false,
+  aspectRatio = 0.5625, // Default 16:9 aspect ratio (9/16)
+  fullHeight = false
+}: VideoPlayerProps) {
+  const playerRef = useRef<YTPlayer | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [playerReady, setPlayerReady] = useState(false);
+  const [apiError, setApiError] = useState(false);
+  const [thumbnailError, setThumbnailError] = useState(false);
 
+  const playerVars = useMemo(() => ({
+    autoplay: isPlaying ? 1 : 0,
+    controls: 0,
+    disablekb: 1,
+    rel: 0,
+    modestbranding: 1
+  }), [isPlaying]);
+
+  // Load YouTube API
   useEffect(() => {
-    setShowPlaceholder(!videoId);
+    if (!videoId) return;
+
+    // If API is already loaded
+    if (window.YT) {
+      initializePlayer();
+      return;
+    }
+
+    const timeout = setTimeout(() => {
+      if (!window.YT) setApiError(true);
+    }, 5000);
+
+    const tag = document.createElement('script');
+    tag.src = "https://www.youtube.com/iframe_api";
+    tag.id = 'youtube-iframe-script';
+    tag.async = true;
+
+    window.onYouTubeIframeAPIReady = initializePlayer;
+
+    document.body.appendChild(tag);
+
+    return () => {
+      cleanupPlayer();
+      clearTimeout(timeout);
+      document.getElementById('youtube-iframe-script')?.remove();
+      window.onYouTubeIframeAPIReady = null;
+    };
   }, [videoId]);
 
-  if (showPlaceholder) {
+  const initializePlayer = () => {
+    if (!containerRef.current || !videoId) return;
+
+    try {
+      playerRef.current = new window.YT.Player(containerRef.current, {
+        height: '100%',
+        width: '100%',
+        videoId,
+        playerVars,
+        events: {
+          onReady: () => {
+            setPlayerReady(true);
+            if (debug) console.log('Player ready');
+          },
+          onStateChange: (event: { data: number }) => {
+            if (debug) console.log('Player state:', event.data);
+          },
+          onError: () => setApiError(true)
+        }
+      });
+    } catch (error) {
+      if (debug) console.error('Player initialization failed:', error);
+      setApiError(true);
+    }
+  };
+
+  const cleanupPlayer = () => {
+    if (playerRef.current) {
+      try {
+        playerRef.current.destroy();
+      } catch (error) {
+        if (debug) console.error('Player cleanup failed:', error);
+      }
+      playerRef.current = null;
+    }
+    setPlayerReady(false);
+  };
+
+  // Handle play/pause with debouncing
+  useEffect(() => {
+    if (!playerReady || !playerRef.current) return;
+
+    const handler = setTimeout(() => {
+      try {
+        isPlaying ? playerRef.current?.playVideo() : playerRef.current?.pauseVideo();
+      } catch (error) {
+        if (debug) console.error('Playback error:', error);
+      }
+    }, 100);
+
+    return () => clearTimeout(handler);
+  }, [isPlaying, playerReady]);
+
+  // Handle seeking with threshold
+  useEffect(() => {
+    if (!playerReady || !playerRef.current) return;
+
+    try {
+      const playerTime = playerRef.current.getCurrentTime();
+      if (Math.abs(playerTime - currentTime) > 0.5) {
+        playerRef.current.seekTo(currentTime, true);
+        if (debug) console.log('Seeking to:', currentTime);
+      }
+    } catch (error) {
+      if (debug) console.error('Seek error:', error);
+    }
+  }, [currentTime, playerReady]);
+
+  if (apiError) {
     return (
-      <div className="relative pb-[56.25%] bg-gray-200 rounded-xl mb-4 overflow-hidden">
-        <div className="absolute inset-0 flex items-center justify-center text-gray-500">
-          Video will appear here
+      <div className="aspect-video bg-gray-800 flex items-center justify-center text-white p-4 text-center">
+        <div>
+          <h3 className="font-bold mb-2">YouTube Player Failed to Load</h3>
+          <button 
+            onClick={() => window.location.reload()}
+            className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded"
+          >
+            Retry
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="relative pb-[56.25%] bg-gray-200 rounded-xl mb-4 overflow-hidden">
-      <iframe
-        src={`https://www.youtube.com/embed/${videoId}?enablejsapi=1`}
-        className="absolute inset-0 w-full h-full"
-        frameBorder="0"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-        allowFullScreen
-      />
-      
-      {overlaysVisible && (
-        <div className="absolute inset-0 pointer-events-none z-10">
-          {isMetronomeRunning && (
-            <div className="absolute top-3 left-3 bg-black bg-opacity-70 text-white px-4 py-2 rounded-xl text-xl font-bold flex items-center">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-2
-                ${currentBeat === 1 || currentBeat === 5 ? 'bg-purple-500' : 'bg-red-500'}`}>
-                {currentBeat}
-              </div>
-              <span>Beat</span>
-            </div>
-          )}
-          
-          {currentCue && (
-            <div className="absolute bottom-3 left-3 bg-black bg-opacity-70 text-white px-4 py-2 rounded-xl max-w-[300px]">
-              <div className="text-lg font-bold mb-1">{currentCue.title}</div>
-              <div className="text-sm opacity-80">{currentCue.time}</div>
-            </div>
-          )}
+    <div 
+      className={`relative w-full bg-gray-900 ${fullHeight ? 'h-screen' : ''}`}
+      style={!fullHeight ? { paddingBottom: `${aspectRatio * 100}%` } : undefined}
+      role="region" 
+      aria-label="Video player"
+    >
+      {/* Player container */}
+      <div 
+        ref={containerRef} 
+        className="absolute top-0 left-0 w-full h-full"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        {!playerReady && videoId && (
+          <img
+            src={`https://img.youtube.com/vi/${videoId}/mqdefault.jpg`}
+            alt="Video thumbnail"
+            className="absolute inset-0 w-full h-full object-cover opacity-50"
+            loading="lazy"
+            onError={() => setThumbnailError(true)}
+          />
+        )}
+      </div>
+
+      {/* Loading indicator */}
+      {!playerReady && !apiError && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
+        </div>
+      )}
+
+      {/* Overlays */}
+      {overlaysVisible && playerReady && (
+        <div className="absolute inset-0 pointer-events-none">
+          <TimeOverlay currentTime={currentTime} />
+          {isMetronomeRunning && <BeatOverlay currentBeat={currentBeat} />}
+          {currentCue && <CueOverlay cue={currentCue} />}
         </div>
       )}
     </div>
   );
-};
-
-export default VideoPlayer;
+}

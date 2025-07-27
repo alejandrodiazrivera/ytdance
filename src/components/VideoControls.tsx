@@ -8,6 +8,8 @@ interface VideoControlsProps {
   onSpeedChange: (speed: number) => void;
   onAddCue: () => void;
   onToggleOverlay: () => void;
+  isPlaying: boolean;
+  overlaysVisible: boolean;
 }
 
 const VideoControls: FC<VideoControlsProps> = ({
@@ -17,57 +19,59 @@ const VideoControls: FC<VideoControlsProps> = ({
   onSkipForward,
   onSpeedChange,
   onAddCue,
-  onToggleOverlay
+  onToggleOverlay,
+  isPlaying,
+  overlaysVisible
 }) => {
+  const handleSpeedChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    onSpeedChange(parseFloat(e.target.value));
+  };
+
   return (
-    <div className="flex flex-wrap gap-2 mt-4">
+    <div className="flex flex-wrap items-center gap-3">
       <button
-        onClick={onPlay}
-        className="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded-lg flex items-center gap-2 transition"
+        onClick={isPlaying ? onPause : onPlay}
+        className="p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg"
       >
-        ▶ Play
+        {isPlaying ? '⏸ Pause' : '▶ Play'}
       </button>
-      <button
-        onClick={onPause}
-        className="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded-lg flex items-center gap-2 transition"
-      >
-        ⏸ Pause
-      </button>
+
       <button
         onClick={onSkipBack}
-        className="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded-lg flex items-center gap-2 transition"
+        className="p-2 bg-gray-200 hover:bg-gray-300 rounded-lg"
       >
-        ⏪ 10s
+        ⏮ 10s
       </button>
+
       <button
         onClick={onSkipForward}
-        className="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded-lg flex items-center gap-2 transition"
+        className="p-2 bg-gray-200 hover:bg-gray-300 rounded-lg"
       >
-        ⏩ 10s
+        ⏭ 10s
       </button>
-      
+
       <select
-        onChange={(e) => onSpeedChange(parseFloat(e.target.value))}
-        className="p-2 border border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition"
+        onChange={handleSpeedChange}
+        className="p-2 border border-gray-200 rounded-lg"
         defaultValue="1"
       >
-        <option value="1">1x</option>
-        <option value="1.5">1.5x</option>
-        <option value="2">2x</option>
+        {[0.5, 0.75, 1, 1.25, 1.5, 2].map(speed => (
+          <option key={speed} value={speed}>{speed}x</option>
+        ))}
       </select>
-      
+
       <button
         onClick={onAddCue}
-        className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition"
+        className="p-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg"
       >
-        ⏺ Add Cue Point
+        ⏺ Add Cue
       </button>
-      
+
       <button
         onClick={onToggleOverlay}
-        className="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded-lg transition"
+        className="p-2 bg-gray-200 hover:bg-gray-300 rounded-lg ml-auto"
       >
-        Toggle Overlays
+        {overlaysVisible ? '⚪ Overlays' : '🟢 Overlays'}
       </button>
     </div>
   );

@@ -1,14 +1,15 @@
-import { FC } from 'react';
+import { FC, useState, useEffect, useCallback, ChangeEvent } from 'react';
 import BeatIndicator from './BeatIndicator';
 
 interface MetronomeControlsProps {
-  bpm: number | null;
+  bpm: number;
   currentBeat: number;
   isRunning: boolean;
   onTapTempo: () => void;
-  onStart: () => void;
+  onStart: () => void;  // No changes needed to props
   onStop: () => void;
-  onAdjustBpm: (amount: number) => void; // Now handles decimals
+  onAdjustBpm: (amount: number) => void;
+  onBpmChange: (newBpm: number) => void;
   className?: string;
 }
 
@@ -19,11 +20,43 @@ const MetronomeControls: FC<MetronomeControlsProps> = ({
   onTapTempo,
   onStart,
   onStop,
-  onAdjustBpm
+  onAdjustBpm,
+  onBpmChange
 }) => {
+  const [inputValue, setInputValue] = useState(bpm.toFixed(2));
+
+  // Sync input with BPM changes
+  useEffect(() => {
+    setInputValue(bpm.toFixed(2));
+  }, [bpm]);
+
+  const handleBpmInputChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setInputValue(value);
+    
+    if (/^\d*\.?\d*$/.test(value)) {
+      const numValue = parseFloat(value);
+      if (!isNaN(numValue)) {
+        onBpmChange(Math.max(1, numValue));
+      }
+    }
+  };
+
+  const handleBpmInputBlur = () => {
+    const numValue = parseFloat(inputValue);
+    if (isNaN(numValue) || numValue <= 0) {
+      setInputValue(bpm.toFixed(2));
+    } else {
+      onBpmChange(numValue);
+    }
+  };
+
+  const handleIncrement = () => onAdjustBpm(0.01);
+  const handleDecrement = () => onAdjustBpm(-0.01);
+
   return (
     <div className="bg-white rounded-xl shadow p-6 mb-6">
-      <h3 className="text-xl font-semibold mb-4">Metronome</h3>
+      <h3 className="text-xl font-semibold mb-4">Metronome (Salsa 8-count)</h3>
       <div className="flex flex-wrap items-center gap-3 mt-4">
         <button
           onClick={onTapTempo}
@@ -33,23 +66,26 @@ const MetronomeControls: FC<MetronomeControlsProps> = ({
         </button>
         
         <div className="flex items-center gap-1">
-          {/* Now adjusts by -0.1 */}
           <button
-            onClick={() => onAdjustBpm(-0.1)}
-            className="bg-gray-200 hover:bg-gray-300 w-8 h-8 rounded-full flex items-center justify-center font-bold transition"
+            onClick={handleDecrement}
+            className="bg-gray-200 hover:bg-gray-300 w-8 h-8 rounded-full flex items-center justify-center font-bold transition active:bg-gray-400"
           >
             -
           </button>
           
-          {/* Shows 1 decimal place */}
-          <div className="font-bold min-w-[80px] text-center">
-            {bpm ? `${bpm.toFixed(1)} BPM` : '-- BPM'}
-          </div>
+          <input
+            type="text"
+            value={inputValue}
+            onChange={handleBpmInputChange}
+            onBlur={handleBpmInputBlur}
+            className="font-bold w-20 text-center border border-gray-300 rounded-lg py-1 px-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            aria-label="BPM value"
+          />
+          <span className="font-bold">BPM</span>
           
-          {/* Now adjusts by +0.1 */}
           <button
-            onClick={() => onAdjustBpm(0.1)}
-            className="bg-gray-200 hover:bg-gray-300 w-8 h-8 rounded-full flex items-center justify-center font-bold transition"
+            onClick={handleIncrement}
+            className="bg-gray-200 hover:bg-gray-300 w-8 h-8 rounded-full flex items-center justify-center font-bold transition active:bg-gray-400"
           >
             +
           </button>
@@ -57,17 +93,23 @@ const MetronomeControls: FC<MetronomeControlsProps> = ({
         
         <BeatIndicator currentBeat={currentBeat} isRunning={isRunning} />
         
+        {/* Start Button - Now acts as reset when pressed multiple times */}
         <button
-          onClick={onStart}
-          disabled={!bpm}
-          className={`px-4 py-2 rounded-lg transition ${!bpm ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600 text-white'}`}
-        >
-          Start
-        </button>
+        onClick={onStart}
+        className="px-4 py-2 rounded-lg transition bg-blue-500 hover:bg-blue-600 text-white"
+      >
+        Start
+      </button>
         
+        {/* Stop Button - Only active when running */}
         <button
           onClick={onStop}
-          className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition"
+          disabled={!isRunning}
+          className={`px-4 py-2 rounded-lg transition ${
+            !isRunning 
+              ? 'bg-red-300 cursor-not-allowed' 
+              : 'bg-red-500 hover:bg-red-600 text-white'
+          }`}
         >
           Stop
         </button>

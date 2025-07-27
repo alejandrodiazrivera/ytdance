@@ -1,78 +1,150 @@
-import { useEffect, useRef, useState } from 'react';
-import { useAudio } from './useAudio';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
-export const useMetronome = () => {
-  const [bpm, setBpm] = useState<number | null>(null);
-  const [isRunning, setIsRunning] = useState(false);
-  const [currentBeat, setCurrentBeat] = useState(0);
+type AudioNodeRef = OscillatorNode | AudioBufferSourceNode | null;
+
+export const useMetronome = (initialBpm = 120) => {
+  const [bpm, setBpm] = useState<number>(initialBpm);
+  const [isRunning, setIsRunning] = useState<boolean>(false);
+  const [currentBeat, setCurrentBeat] = useState<number>(1);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastTapRef = useRef<number | null>(null);
   const tapTimesRef = useRef<number[]>([]);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const { playClick } = useAudio();
-
-  const tapTempo = () => {
-    const now = Date.now();
-    tapTimesRef.current = tapTimesRef.current.filter(time => now - time < 2000);
-    tapTimesRef.current.push(now);
-    
-    if (tapTimesRef.current.length > 1) {
-      const averageDiff = (tapTimesRef.current[tapTimesRef.current.length - 1] - tapTimesRef.current[0]) / 
-                         (tapTimesRef.current.length - 1);
-      setBpm(Math.round(60000 / averageDiff));
-    }
-  };
-
-  const start = () => {
-    if (!bpm) return;
-    
-    stop();
-    setCurrentBeat(0);
-    const interval = 60000 / bpm;
-    
-    // Play first beat immediately
-    setCurrentBeat(prev => {
-      const newBeat = (prev % 8) + 1;
-      playClick(newBeat);
-      return newBeat;
-    });
-    
-    // Set interval for subsequent beats
-    intervalRef.current = setInterval(() => {
-      setCurrentBeat(prev => {
-        const newBeat = (prev % 8) + 1;
-        playClick(newBeat);
-        return newBeat;
-      });
-    }, interval);
-    
-    setIsRunning(true);
-  };
-
-  const stop = () => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-    setIsRunning(false);
-    setCurrentBeat(0);
-  };
-
-  const adjustBpm = (amount: number) => {
-    if (bpm) {
-      const newBpm = Math.max(1, bpm + amount);
-      setBpm(newBpm);
-      if (isRunning) {
-        start(); // Restart with new BPM
-      }
-    }
-  };
+  
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const clickSourcesRef = useRef<AudioNodeRef[]>([]);
 
   useEffect(() => {
+    const initAudio = async () => {
+      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+    };
+
+    const handleFirstInteraction = () => {
+      initAudio();
+      window.removeEventListener('click', handleFirstInteraction);
+      window.removeEventListener('keydown', handleFirstInteraction);
+    };
+
+    window.addEventListener('click', handleFirstInteraction);
+    window.addEventListener('keydown', handleFirstInteraction);
+
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
+      clickSourcesRef.current.forEach(source => {
+        if (source) {
+          source.stop();
+          source.disconnect();
+        }
+      });
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+      }
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
       }
     };
   }, []);
+
+  const playClick = useCallback((beat: number) => {
+    if (!audioContextRef.current) return;
+    
+    const oscillator = audioContextRef.current.createOscillator();
+    const gainNode = audioContextRef.current.createGain();
+    
+    oscillator.type = 'sine';
+    oscillator.frequency.value = beat === 1 || beat === 5 ? 800 : 600;
+    
+    const now = audioContextRef.current.currentTime;
+    if (beat === 1 || beat === 5) {
+      gainNode.gain.setValueAtTime(0.7, now);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+    } else {
+      gainNode.gain.setValueAtTime(0.5, now);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+    }
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContextRef.current.destination);
+    
+    oscillator.start();
+    oscillator.stop(now + (beat === 1 || beat === 5 ? 0.2 : 0.1));
+    
+    clickSourcesRef.current.push(oscillator);
+    
+    oscillator.onended = () => {
+      clickSourcesRef.current = clickSourcesRef.current.filter(
+        s => s !== oscillator
+      );
+      gainNode.disconnect();
+    };
+  }, []);
+
+  const start = useCallback(() => {
+    if (isRunning) return;
+    
+    setIsRunning(true);
+    setCurrentBeat(1);
+    playClick(1);
+    
+    const interval = 60000 / bpm;
+    timerRef.current = setInterval(() => {
+      setCurrentBeat(prev => {
+        const nextBeat = prev === 8 ? 1 : prev + 1;
+        playClick(nextBeat);
+        return nextBeat;
+      });
+    }, interval);
+  }, [bpm, isRunning, playClick]);
+
+  const stop = useCallback(() => {
+    if (!isRunning) return;
+    
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    setIsRunning(false);
+  }, [isRunning]);
+
+  const setBpmPrecise = useCallback((newBpm: number | string) => {
+    const numericBpm = typeof newBpm === 'string' ? parseFloat(newBpm) : newBpm;
+    if (isNaN(numericBpm)) return;
+    
+    const validatedBpm = parseFloat(Math.max(40, Math.min(300, numericBpm)).toFixed(2));
+    setBpm(validatedBpm);
+    
+    if (isRunning) {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        const interval = 60000 / validatedBpm;
+        timerRef.current = setInterval(() => {
+          setCurrentBeat(prev => {
+            const nextBeat = prev === 8 ? 1 : prev + 1;
+            playClick(nextBeat);
+            return nextBeat;
+          });
+        }, interval);
+      }
+    }
+  }, [isRunning, playClick]);
+
+  const adjustBpm = useCallback((amount: number) => {
+    setBpmPrecise(bpm + amount);
+  }, [bpm, setBpmPrecise]);
+
+  const tapTempo = useCallback(() => {
+    const now = Date.now();
+    tapTimesRef.current = [...tapTimesRef.current, now].slice(-4);
+    
+    if (tapTimesRef.current.length > 1) {
+      const intervals = [];
+      for (let i = 1; i < tapTimesRef.current.length; i++) {
+        intervals.push(tapTimesRef.current[i] - tapTimesRef.current[i - 1]);
+      }
+      
+      const avgInterval = intervals.reduce((sum, val) => sum + val, 0) / intervals.length;
+      const tappedBpm = 60000 / avgInterval;
+      setBpmPrecise(tappedBpm);
+    }
+  }, [setBpmPrecise]);
 
   return {
     bpm,
@@ -82,6 +154,7 @@ export const useMetronome = () => {
     start,
     stop,
     adjustBpm,
-    setBpm
+    setBpm: setBpmPrecise,
+    setCurrentBeat
   };
 };

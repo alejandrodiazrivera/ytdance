@@ -16,6 +16,9 @@ export default function Home() {
   const [currentCue, setCurrentCue] = useState<CuePoint | null>(null);
   const [overlaysVisible, setOverlaysVisible] = useState(true);
   const [editingCue, setEditingCue] = useState<CuePoint | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [wasMetronomeRunning, setWasMetronomeRunning] = useState(false);
+  const [pausedBeat, setPausedBeat] = useState(1);
   
   const {
     bpm,
@@ -24,7 +27,8 @@ export default function Home() {
     tapTempo,
     start: startMetronome,
     stop: stopMetronome,
-    adjustBpm
+    adjustBpm,
+    setCurrentBeat: setMetronomeBeat
   } = useMetronome();
 
   const timeUpdateIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -86,6 +90,11 @@ export default function Home() {
   }, [currentTime, cuePoints]);
 
   const handleAddCue = () => {
+    // Pause both video and metronome when adding a cue
+    if (isPlaying) {
+      handlePause();
+    }
+
     const minutes = Math.floor(currentTime / 60).toString().padStart(2, '0');
     const seconds = Math.floor(currentTime % 60).toString().padStart(2, '0');
     const time = `${minutes}:${seconds}`;
@@ -101,23 +110,33 @@ export default function Home() {
 
   const handleSubmitCue = (cue: Omit<CuePoint, 'id'>) => {
     if (editingCue) {
-      // Update existing cue
       setCuePoints(prev => 
         prev.map(c => 
           c.id === editingCue.id ? { ...cue, id: editingCue.id } : c
         )
       );
     } else {
-      // Add new cue
       setCuePoints(prev => [
         ...prev,
         { ...cue, id: Date.now().toString() }
       ]);
     }
     setEditingCue(null);
+    
+    // Resume playback if it was playing before
+    if (wasMetronomeRunning) {
+      setMetronomeBeat(pausedBeat);
+      startMetronome();
+    }
+    if (isPlaying) {
+      handlePlay();
+    }
   };
 
   const handleEditCue = (cue: CuePoint) => {
+    if (isPlaying) {
+      handlePause();
+    }
     setEditingCue(cue);
   };
 
@@ -134,33 +153,35 @@ export default function Home() {
     const [minutes, seconds] = time.split(':').map(Number);
     const newTime = minutes * 60 + seconds;
     setCurrentTime(newTime);
-    alert(`Would jump to ${time} (${newTime} seconds)`);
   };
 
   const handlePlay = () => {
-    alert('Play functionality would work with YouTube API');
+    setIsPlaying(true);
     startTimeTracking();
   };
 
   const handlePause = () => {
-    alert('Pause functionality would work with YouTube API');
+    setIsPlaying(false);
+    setWasMetronomeRunning(isMetronomeRunning);
+    setPausedBeat(currentBeat);
     stopTimeTracking();
+    if (isMetronomeRunning) {
+      stopMetronome();
+    }
   };
 
   const handleSkipBack = () => {
     const newTime = Math.max(0, currentTime - 10);
     setCurrentTime(newTime);
-    alert(`Would skip back to ${newTime} seconds`);
   };
 
   const handleSkipForward = () => {
     const newTime = currentTime + 10;
     setCurrentTime(newTime);
-    alert(`Would skip forward to ${newTime} seconds`);
   };
 
   const handleSpeedChange = (speed: number) => {
-    alert(`Playback speed changed to ${speed}x (would work with YouTube API)`);
+    console.log(`Playback speed changed to ${speed}x`);
   };
 
   const handleToggleOverlay = () => {
@@ -175,12 +196,10 @@ export default function Home() {
 
   return (
     <div className="container mx-auto px-4 py-6 min-h-screen max-w-4xl">
-      {/* Header */}
       <header className="mb-6">
         <h1 className="text-2xl md:text-3xl font-bold">YouTube Dance Video Analyser</h1>
       </header>
 
-      {/* URL Input */}
       <div className="flex flex-col md:flex-row gap-2 mb-4">
         <input
           type="text"
@@ -197,7 +216,6 @@ export default function Home() {
         </button>
       </div>
 
-      {/* Video Player */}
       <div className="mb-4 aspect-video bg-black rounded-lg overflow-hidden">
         <VideoPlayer
           videoId={videoId}
@@ -206,10 +224,10 @@ export default function Home() {
           currentCue={currentCue}
           overlaysVisible={overlaysVisible}
           isMetronomeRunning={isMetronomeRunning}
+          isPlaying={isPlaying}
         />
       </div>
 
-      {/* Combined Controls */}
       <div className="flex flex-wrap gap-3 mb-6 p-3 bg-gray-50 rounded-lg">
         <VideoControls
           onPlay={handlePlay}
@@ -219,6 +237,8 @@ export default function Home() {
           onSpeedChange={handleSpeedChange}
           onAddCue={handleAddCue}
           onToggleOverlay={handleToggleOverlay}
+          isPlaying={isPlaying}
+          overlaysVisible={overlaysVisible}
         />
         
         <MetronomeControls
@@ -229,11 +249,11 @@ export default function Home() {
           onStart={startMetronome}
           onStop={stopMetronome}
           onAdjustBpm={adjustBpm}
+          onBpmChange={(newBpm) => adjustBpm(newBpm - bpm)} // Add this line
           className="ml-auto"
         />
       </div>
 
-      {/* Current Cue Highlight */}
       {currentCue && (
         <div className="mb-4 p-4 bg-blue-50 border-l-4 border-blue-500 rounded-r">
           <h3 className="font-bold">Current Section:</h3>
@@ -242,7 +262,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* Floating Cue Form */}
       {editingCue && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg max-w-md w-full mx-4">
@@ -258,7 +277,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* Mobile Add Button */}
       <button 
         onClick={handleAddCue}
         className="md:hidden fixed bottom-6 right-6 bg-blue-500 text-white p-4 rounded-full shadow-lg z-40"
@@ -266,7 +284,6 @@ export default function Home() {
         +
       </button>
 
-      {/* Cue List */}
       <CueList
         cuePoints={cuePoints}
         currentTime={currentTime}
