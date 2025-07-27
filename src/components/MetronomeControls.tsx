@@ -56,7 +56,7 @@ const MetronomeControls: FC<MetronomeControlsProps> = ({
 
   return (
     <div className="bg-white rounded-xl shadow p-6 mb-6">
-      <h3 className="text-xl font-semibold mb-4">Metronome (Salsa 8-count)</h3>
+      <h3 className="text-xl font-semibold mb-4">Metronome</h3>
       <div className="flex flex-wrap items-center gap-3 mt-4">
         <button
           onClick={onTapTempo}

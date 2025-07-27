@@ -18,8 +18,8 @@ interface VideoPlayerProps {
   isMetronomeRunning: boolean;
   isPlaying: boolean;
   debug?: boolean;
-  aspectRatio?: number; // New prop for custom aspect ratio (defaults to 16:9)
-  fullHeight?: boolean; // New prop for full viewport height
+  aspectRatio?: number;
+  fullHeight?: boolean;
 }
 
 declare global {
@@ -42,11 +42,37 @@ const TimeOverlay = memo(({ currentTime }: { currentTime: number }) => (
   </div>
 ));
 
-const BeatOverlay = memo(({ currentBeat }: { currentBeat: number }) => (
-  <div className="absolute top-2 right-2 bg-black/70 text-white p-1 md:p-2 rounded text-xs md:text-base">
-    Beat: {currentBeat}
-  </div>
-));
+interface BeatOverlayProps {
+  currentBeat: number;
+  isMetronomeRunning: boolean;
+}
+
+const BeatOverlay = memo(({ currentBeat, isMetronomeRunning }: BeatOverlayProps) => {
+  // Beat color logic
+  const getBeatColor = (beat: number) => {
+    if (!isMetronomeRunning) return 'bg-gray-400';
+    const normalizedBeat = ((beat - 1) % 8) + 1; // Assuming 8-beat pattern
+    if (beat === normalizedBeat) {
+      return (beat === 1 || beat === 5) ? 'bg-purple-600' : 'bg-red-600';
+    }
+    return 'bg-gray-400';
+  };
+
+  return (
+    <div className={`
+      absolute top-2 right-2 
+      flex items-center justify-center 
+      w-6 h-6 md:w-8 md:h-8 
+      rounded-full 
+      text-white font-bold text-xs md:text-sm
+      ${getBeatColor(currentBeat)}
+      ${isMetronomeRunning ? 'animate-pulse' : ''}
+      transition-colors duration-100
+    `}>
+      {currentBeat}
+    </div>
+  );
+});
 
 const CueOverlay = memo(({ cue }: { cue: CuePoint }) => (
   <div className="absolute bottom-4 left-0 right-0 mx-auto bg-black/70 text-white p-2 md:p-4 rounded max-w-[90%] md:max-w-md text-center">
@@ -65,7 +91,7 @@ export default function VideoPlayer({
   isMetronomeRunning,
   isPlaying,
   debug = false,
-  aspectRatio = 0.5625, // Default 16:9 aspect ratio (9/16)
+  aspectRatio = 0.5625,
   fullHeight = false
 }: VideoPlayerProps) {
   const playerRef = useRef<YTPlayer | null>(null);
@@ -86,7 +112,6 @@ export default function VideoPlayer({
   useEffect(() => {
     if (!videoId) return;
 
-    // If API is already loaded
     if (window.YT) {
       initializePlayer();
       return;
@@ -233,7 +258,12 @@ export default function VideoPlayer({
       {overlaysVisible && playerReady && (
         <div className="absolute inset-0 pointer-events-none">
           <TimeOverlay currentTime={currentTime} />
-          {isMetronomeRunning && <BeatOverlay currentBeat={currentBeat} />}
+          {isMetronomeRunning && (
+            <BeatOverlay 
+              currentBeat={currentBeat} 
+              isMetronomeRunning={isMetronomeRunning} 
+            />
+          )}
           {currentCue && <CueOverlay cue={currentCue} />}
         </div>
       )}

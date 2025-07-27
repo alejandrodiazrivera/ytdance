@@ -29,16 +29,32 @@ const VideoControls: FC<VideoControlsProps> = ({
 
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <button
-        onClick={isPlaying ? onPause : onPlay}
-        className="p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg"
-      >
-        {isPlaying ? '⏸ Pause' : '▶ Play'}
-      </button>
+      {/* Play Button - only shown when paused */}
+      {!isPlaying && (
+        <button
+          onClick={onPlay}
+          className="p-2 bg-green-500 hover:bg-green-600 text-white rounded-lg"
+          aria-label="Play"
+        >
+          ▶ Play
+        </button>
+      )}
+
+      {/* Pause Button - only shown when playing */}
+      {isPlaying && (
+        <button
+          onClick={onPause}
+          className="p-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg"
+          aria-label="Pause"
+        >
+          ⏸ Pause
+        </button>
+      )}
 
       <button
         onClick={onSkipBack}
         className="p-2 bg-gray-200 hover:bg-gray-300 rounded-lg"
+        aria-label="Skip Back 10 seconds"
       >
         ⏮ 10s
       </button>
@@ -46,6 +62,7 @@ const VideoControls: FC<VideoControlsProps> = ({
       <button
         onClick={onSkipForward}
         className="p-2 bg-gray-200 hover:bg-gray-300 rounded-lg"
+        aria-label="Skip Forward 10 seconds"
       >
         ⏭ 10s
       </button>
@@ -54,6 +71,7 @@ const VideoControls: FC<VideoControlsProps> = ({
         onChange={handleSpeedChange}
         className="p-2 border border-gray-200 rounded-lg"
         defaultValue="1"
+        aria-label="Playback Speed"
       >
         {[0.5, 0.75, 1, 1.25, 1.5, 2].map(speed => (
           <option key={speed} value={speed}>{speed}x</option>
@@ -63,6 +81,7 @@ const VideoControls: FC<VideoControlsProps> = ({
       <button
         onClick={onAddCue}
         className="p-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg"
+        aria-label="Add Cue Point"
       >
         ⏺ Add Cue
       </button>
@@ -70,8 +89,9 @@ const VideoControls: FC<VideoControlsProps> = ({
       <button
         onClick={onToggleOverlay}
         className="p-2 bg-gray-200 hover:bg-gray-300 rounded-lg ml-auto"
+        aria-label="Toggle Overlays"
       >
-        {overlaysVisible ? '⚪ Overlays' : '🟢 Overlays'}
+        {overlaysVisible ? '⚪ Hide Overlays' : '🟢 Show Overlays'}
       </button>
     </div>
   );

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 
 type AudioNodeRef = OscillatorNode | AudioBufferSourceNode | null;
 
-export const useMetronome = (initialBpm = 120) => {
+export const useMetronome = (initialBpm = 100) => {
   const [bpm, setBpm] = useState<number>(initialBpm);
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [currentBeat, setCurrentBeat] = useState<number>(1);

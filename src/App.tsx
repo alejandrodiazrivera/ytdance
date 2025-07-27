@@ -15,6 +15,7 @@ const App = () => {
   const [currentCue, setCurrentCue] = useState<CuePoint | null>(null);
   const [overlaysVisible, setOverlaysVisible] = useState(true);
   const [editingCue, setEditingCue] = useState<CuePoint | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false); // Added isPlaying state
   
   const {
     bpm,
@@ -100,14 +101,12 @@ const App = () => {
 
   const handleSubmitCue = (cue: Omit<CuePoint, 'id'>) => {
     if (editingCue) {
-      // Update existing cue
       setCuePoints(prev => 
         prev.map(c => 
           c.id === editingCue.id ? { ...cue, id: editingCue.id } : c
         )
       );
     } else {
-      // Add new cue
       setCuePoints(prev => [
         ...prev,
         { ...cue, id: Date.now().toString() }
@@ -137,13 +136,15 @@ const App = () => {
   };
 
   const handlePlay = () => {
-    alert('Play functionality would work with YouTube API');
+    setIsPlaying(true);
     startTimeTracking();
+    alert('Play functionality would work with YouTube API');
   };
 
   const handlePause = () => {
-    alert('Pause functionality would work with YouTube API');
+    setIsPlaying(false);
     stopTimeTracking();
+    alert('Pause functionality would work with YouTube API');
   };
 
   const handleSkipBack = () => {
@@ -164,6 +165,10 @@ const App = () => {
 
   const handleToggleOverlay = () => {
     setOverlaysVisible(prev => !prev);
+  };
+
+  const handleBpmChange = (newBpm: number) => {
+    adjustBpm(newBpm - bpm);
   };
 
   useEffect(() => {
@@ -201,6 +206,7 @@ const App = () => {
         currentCue={currentCue}
         overlaysVisible={overlaysVisible}
         isMetronomeRunning={isMetronomeRunning}
+        isPlaying={isPlaying} // Added required prop
       />
 
       <VideoControls
@@ -211,6 +217,8 @@ const App = () => {
         onSpeedChange={handleSpeedChange}
         onAddCue={handleAddCue}
         onToggleOverlay={handleToggleOverlay}
+        isPlaying={isPlaying} // Added required prop
+        overlaysVisible={overlaysVisible} // Added required prop
       />
 
       <MetronomeControls
@@ -221,6 +229,7 @@ const App = () => {
         onStart={startMetronome}
         onStop={stopMetronome}
         onAdjustBpm={adjustBpm}
+        onBpmChange={handleBpmChange} // Added required prop
       />
 
       {editingCue ? (

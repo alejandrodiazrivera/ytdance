@@ -33,9 +33,7 @@ const BeatIndicator: FC<BeatIndicatorProps> = ({ currentBeat, isRunning }) => {
           </div>
         ))}
       </div>
-      <div className="font-bold min-w-[20px] text-center">
-        {isRunning ? normalizedBeat : '-'}
-      </div>
+
     </div>
   );
 };
