@@ -5,7 +5,7 @@ interface CueFormProps {
   currentTime: number;
   currentBeat: number;
   isMetronomeRunning: boolean;
-  onSubmit: (cue: Omit<CuePoint, 'id'>) => void;
+  onSubmit: (cue: Omit<CuePoint, 'id'> | CuePoint) => void;
   editingCue: CuePoint | null;
   onCancel: () => void;
   onPause: () => void;
@@ -40,9 +40,9 @@ const CueForm: FC<CueFormProps> = ({
       setTime(`${minutes}:${seconds}`);
       setTitle('');
       setNote('');
-      setBeat(isMetronomeRunning ? currentBeat : undefined);
+      setBeat(currentBeat); // Always set the beat, regardless of metronome state
     }
-  }, [editingCue, onPause, currentTime, isMetronomeRunning, currentBeat]);
+  }, [editingCue, onPause, currentTime, currentBeat]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,36 +64,41 @@ const CueForm: FC<CueFormProps> = ({
       setIsSubmitting(false);
     }
   };
-
   const getBeatColor = () => {
-    if (!isMetronomeRunning) return 'bg-gray-200';
+    // Beats 1 and 5 are purple, all others are red
     return currentBeat === 1 || currentBeat === 5 
-      ? currentBeat === 1 ? 'bg-purple-600' : 'bg-red-600' 
-      : 'bg-gray-400';
+      ? 'bg-purple-600' 
+      : 'bg-red-600';
   };
 
   return (
-    <div className="mb-6"> {/* Removed bg-white, rounded-xl, shadow-lg, p-6, and border */}
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-xl font-bold text-gray-800">
-          {editingCue ? 'Edit Cue Point' : '➕ Add New Cue Point'}
-        </h3>
-        {editingCue && (
-          <button
-            onClick={onCancel}
-            className="text-gray-400 hover:text-gray-600 transition"
-            aria-label="Close"
-          >
-            ✕
-          </button>
-        )}
+    <div className="mb-6">
+      {/* Header with beat indicator always visible */}
+      <div className="flex items-center gap-3 mb-4">
+        <div className={`rounded-full h-10 w-10 flex items-center justify-center text-white font-bold ${getBeatColor()}`}>
+          {currentBeat}
+        </div>
+        <div className="flex-1 flex items-center justify-between">
+          <h3 className="text-xl font-bold text-gray-800">
+            {editingCue ? 'Edit Cue Point' : '➕ Add New Cue Point'}
+          </h3>
+          {editingCue && (
+            <button
+              onClick={onCancel}
+              className="text-gray-400 hover:text-gray-600 transition"
+              aria-label="Close"
+            >
+              ✕
+            </button>
+          )}
+        </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Top row - Time/Beat and Title */}
+        {/* Top row - Time and Title */}
         <div className="flex gap-4">
-          {/* Time and Beat */}
-          <div className="flex-1 space-y-2">
+          {/* Time */}
+          <div className="flex-1">
             <input
               type="text"
               value={time}
@@ -102,11 +107,6 @@ const CueForm: FC<CueFormProps> = ({
               className="w-full p-3 border border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition"
               required
             />
-            {isMetronomeRunning && (
-              <div className={`rounded-full h-10 w-10 mx-auto flex items-center justify-center text-white font-bold ${getBeatColor()}`}>
-                {currentBeat}
-              </div>
-            )}
           </div>
 
           {/* Title */}

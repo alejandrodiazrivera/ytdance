@@ -197,7 +197,7 @@ export default function Home() {
   return (
     <div className="container mx-auto px-4 py-6 min-h-screen max-w-4xl">
       <header className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold">YouTube Dance Video Analyser</h1>
+        <h1 className="text-2xl md:text-3xl font-bold">OnBeat</h1>
       </header>
 
       <div className="flex flex-col md:flex-row gap-2 mb-4">
@@ -277,13 +277,6 @@ export default function Home() {
           </div>
         </div>
       )}
-
-      <button 
-        onClick={handleAddCue}
-        className="md:hidden fixed bottom-6 right-6 bg-blue-500 text-white p-4 rounded-full shadow-lg z-40"
-      >
-        +
-      </button>
 
       <CueList
         cuePoints={cuePoints}

@@ -1,8 +1,9 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export const useAudio = () => {
   const audioContextRef = useRef<AudioContext | null>(null);
   const clickSourcesRef = useRef<(OscillatorNode | AudioBufferSourceNode)[]>([]);
+  const [isMuted, setIsMuted] = useState(false);
 
   // Initialize audio context
   useEffect(() => {
@@ -32,14 +33,14 @@ export const useAudio = () => {
   }, []);
 
   const playClick = (beat: number) => {
-    if (!audioContextRef.current) return;
+    if (!audioContextRef.current || isMuted) return; // <-- Added isMuted check here
     
     // Create oscillator for each click (like original)
     const oscillator = audioContextRef.current.createOscillator();
     const gainNode = audioContextRef.current.createGain();
     
-    oscillator.type = 'sine'; // Restored original sine wave
-    oscillator.frequency.value = 800; // Same 800Hz as original
+    oscillator.type = 'sine';
+    oscillator.frequency.value = 800;
     
     // Original volume envelopes
     const now = audioContextRef.current.currentTime;
@@ -58,7 +59,7 @@ export const useAudio = () => {
     
     // Auto-cleanup
     oscillator.start();
-    oscillator.stop(now + (beat === 1 || beat === 5 ? 0.2 : 0.1)); // Match original durations
+    oscillator.stop(now + (beat === 1 || beat === 5 ? 0.2 : 0.1));
     
     // Track and clean up sources
     clickSourcesRef.current.push(oscillator);
@@ -68,5 +69,13 @@ export const useAudio = () => {
     };
   };
 
-  return { playClick };
+  const toggleMute = () => {
+    setIsMuted(prev => !prev);
+  };
+
+  return { 
+    playClick,
+    isMuted,        // Expose mute state
+    toggleMute      // Expose toggle function
+  };
 };
